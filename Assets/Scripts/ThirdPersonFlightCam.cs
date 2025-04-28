@@ -2,31 +2,39 @@ using UnityEngine;
 
 public class ThirdPersonFlightCam : MonoBehaviour
 {
-    public Transform target; // The player
+    public Transform target;
     public Vector3 offset = new Vector3(0, 2, -10);
     public float followSpeed = 5f;
-    public float boostZoomOut = -15f;
-    public float zoomLerpSpeed = 5f;
-
-    [Header("Mouse Look")]
-    public float mouseSensitivity = 2f;
+    public float mouseSensitivity = 3f;
     public float pitchMin = -40f;
     public float pitchMax = 80f;
 
-    private float yaw = 0f;
-    private float pitch = 10f;
+    public float boostZoomOut = -20f;
+    public float zoomLerpSpeed = 5f;
+
+    private float yaw;
+    private float pitch;
     private float targetZOffset;
-    private Transform cam;
+
+    private Camera cam;
     private PlayerController playerController;
 
-    void Start()
+    private void Awake()
     {
-        cam = Camera.main.transform;
-        targetZOffset = offset.z;
-        playerController = target.GetComponent<PlayerController>();
+        cam = GetComponent<Camera>();
+    }
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+    private void Start()
+    {
+        if (target != null)
+        {
+            playerController = target.GetComponent<PlayerController>();
+            targetZOffset = offset.z;
+        }
+        else
+        {
+            Debug.LogError("ThirdPersonFlightCam: No target assigned!");
+        }
     }
 
     void LateUpdate()
@@ -41,11 +49,10 @@ public class ThirdPersonFlightCam : MonoBehaviour
         pitch -= mouseY;
         pitch = Mathf.Clamp(pitch, pitchMin, pitchMax);
 
-        // Camera direction
-        Vector3 camForward = cam.forward;
-        Vector3 camRight = cam.right;
+        // Determine input direction
+        Vector3 camForward = cam.transform.forward;
+        Vector3 camRight = cam.transform.right;
 
-        // Use input direction instead of velocity for reliability
         Vector3 inputDir = camForward * playerController.moveInput.y + camRight * playerController.moveInput.x;
         inputDir += Vector3.up * playerController.verticalInput;
         inputDir = inputDir.normalized;
@@ -53,12 +60,12 @@ public class ThirdPersonFlightCam : MonoBehaviour
         float dot = Vector3.Dot(inputDir, camForward.normalized);
         bool isFlyingTowardCamera = dot < -0.1f;
 
-        // Set base zoom
+        // Set base zoom depending on boost state
         float desiredZ = offset.z;
 
         if (playerController.isUltraBoosting && isFlyingTowardCamera)
         {
-            desiredZ = boostZoomOut * 1.5f; // extra zoom for backwards ultra
+            desiredZ = boostZoomOut * 1.5f;
         }
         else if (playerController.isUltraBoosting)
         {
@@ -71,12 +78,18 @@ public class ThirdPersonFlightCam : MonoBehaviour
 
         targetZOffset = Mathf.Lerp(targetZOffset, desiredZ, Time.deltaTime * zoomLerpSpeed);
 
-        // Position camera
+        // Create rotation from yaw and pitch
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0);
-        Vector3 targetPosition = target.position + rotation * new Vector3(0, offset.y, targetZOffset);
 
-        transform.position = Vector3.Lerp(transform.position, targetPosition, followSpeed * Time.deltaTime);
-        cam.LookAt(target.position + Vector3.up * 1.5f);
+        // Calculate target camera position
+        Vector3 targetPos = target.position + rotation * new Vector3(0, offset.y, targetZOffset);
+
+        // Smoothly move camera to target position
+        transform.position = Vector3.Lerp(transform.position, targetPos, followSpeed * Time.deltaTime);
+
+        // Instantly rotate camera based on yaw and pitch (no smoothing)
+        transform.rotation = rotation;
     }
+
 }
 

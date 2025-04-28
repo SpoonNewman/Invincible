@@ -11,7 +11,7 @@ public class EnergyBarUI : MonoBehaviour
         if (player == null || fillImage == null) return;
 
         // Get energy % (0.0 to 1.0)
-        float energyPercent = player.currentEnergy / player.maxEnergy;
+        float energyPercent = player.GetCurrentEnergy() / player.maxEnergy;
 
         // Smoothly interpolate the fill amount
         fillImage.fillAmount = Mathf.Lerp(fillImage.fillAmount, energyPercent, Time.deltaTime * 10f);
